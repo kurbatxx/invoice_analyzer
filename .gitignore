@@ -1,0 +1,8 @@
+/target
+/.vscode
+/.cargo
+
+*.pdf
+*.html
+fleet.toml
+*.lock
