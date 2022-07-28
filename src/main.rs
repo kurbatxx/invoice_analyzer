@@ -24,7 +24,7 @@ fn main() {
         Ok(htmls) => htmls
             .into_iter()
             .for_each(|file| match file.path().to_str() {
-                Some(path) => get_address(path),
+                Some(path) => get_data_in_html(path),
                 None => println!("Что-то не так"),
             }),
         Err(_) => println!("Не найдены html-файлы"),
@@ -44,7 +44,7 @@ fn convert_all_pdfs() {
     }
 }
 
-fn get_address(path: &str) {
+fn get_data_in_html(path: &str) {
     let html = fs::read_to_string(path);
     match html {
         Ok(html) => {
@@ -52,30 +52,21 @@ fn get_address(path: &str) {
             let parser = dom.parser();
             let elements = dom
                 .get_elements_by_class_name("c")
-                .filter(|node_handle| {
-                    node_handle.get(parser).map_or(false, |node| {
-                        node.as_tag().map_or(false, |tag| tag.name() == "div")
-                    })
-                })
+                .filter_map(|node_handle| node_handle.get(parser))
+                .filter(|node| node.as_tag().map_or(false, |tag| tag.name() == "div"))
                 .collect::<Vec<_>>();
 
-            let element = elements.iter().enumerate().find(|node_handle| {
-                node_handle
-                    .1
-                    .get(parser)
-                    .map_or(false, |node| node.inner_text(parser) == "Адрес доставки")
-            });
+            let element = elements
+                .iter()
+                .enumerate()
+                .find(|node| node.1.inner_text(parser) == "Адрес доставки");
 
             match element {
                 Some(element) => {
-                    let e = elements[element.0 + 1].get(parser);
-                    match e {
-                        Some(node) => {
-                            println!("{}", node.inner_text(parser));
-                            sort_pdfs_on_folder(node.inner_text(parser).to_string().as_str(), path);
-                        }
-                        None => println!("Ничего"),
-                    }
+                    let (position, _node) = element;
+                    let address = elements[position + 1].inner_text(parser);
+                    println!("{}", &address);
+                    sort_pdfs_on_folder(&address, path);
                 }
                 None => println!("Ничего не найдено"),
             }
@@ -119,7 +110,6 @@ fn pdf_to_html_convert(path: &str) {
     if cfg!(target_os = "windows") {
         let com = Command::new("data/pdf2htmlex/pdf2htmlex")
             .args([path, "--dest-dir=./data/temp"])
-            //.spawn()
             .output()
             .expect("failed to execute process");
 
