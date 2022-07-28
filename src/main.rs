@@ -56,22 +56,52 @@ fn get_data_in_html(path: &str) {
                 .filter(|node| node.as_tag().map_or(false, |tag| tag.name() == "div"))
                 .collect::<Vec<_>>();
 
-            let element = elements
-                .iter()
-                .enumerate()
-                .find(|node| node.1.inner_text(parser) == "Адрес доставки");
-
-            match element {
-                Some(element) => {
-                    let (position, _node) = element;
-                    let address = elements[position + 1].inner_text(parser);
-                    println!("{}", &address);
-                    sort_pdfs_on_folder(&address, path);
-                }
-                None => println!("Ничего не найдено"),
-            }
+            get_value(&elements, "Дата выписки", 1, parser);
+            get_value(&elements, "Регистрационный номер", 1, parser);
+            get_value(&elements, "Адрес доставки", 1, parser);
+            get_table_row(&elements, parser);
+            println!("--#--#--")
         }
         Err(_) => println!("Не удалось прочитать файл"),
+    }
+}
+
+fn get_value(elements: &Vec<&tl::Node>, value_in_html: &str, shift: usize, parser: &tl::Parser) {
+    let element = elements
+        .iter()
+        .enumerate()
+        .find(|node| node.1.inner_text(parser) == value_in_html);
+    match element {
+        Some(element) => {
+            let (position, _node) = element;
+            let value = elements[position + shift].inner_text(parser);
+            println!("{}", &value);
+            //sort_pdfs_on_folder(&value, path);
+        }
+        None => println!("Ничего не найдено"),
+    }
+}
+
+fn get_table_row(elements: &Vec<&tl::Node>, parser: &tl::Parser) {
+    let start_position = elements
+        .iter()
+        .enumerate()
+        .find(|node| node.1.inner_text(parser) == "Раздел G. Данные по товарам, работам, услугам");
+
+    let end_position = elements
+        .iter()
+        .enumerate()
+        .find(|node| node.1.inner_text(parser) == "Всего по счету");
+
+    match (start_position, end_position) {
+        (None, None) | (None, Some(_)) | (Some(_), None) => println!("--Ничего--"),
+        (Some(start), Some(end)) => {
+            let start = start.0 + 7 + 21 + 19;
+            let end = end.0;
+
+            let value = elements[end].inner_text(parser);
+            println!("{}", &value);
+        }
     }
 }
 
