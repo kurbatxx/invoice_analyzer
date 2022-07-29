@@ -5,6 +5,16 @@ use std::{
     path::{Path, PathBuf},
     process::Command,
 };
+
+#[derive(Default, Debug)]
+struct DataHtml {
+    path: String,
+    date: String,
+    esf: String,
+    address: String,
+    table: Vec<TableRow>,
+}
+
 #[derive(Default, Debug)]
 struct TableRow {
     number: i32,
@@ -76,7 +86,7 @@ fn get_data_in_html(path: &str) {
             get_value(&elements, "Дата выписки", 1, parser);
             get_value(&elements, "Регистрационный номер", 1, parser);
             get_value(&elements, "Адрес доставки", 1, parser);
-            get_table_row(&elements, parser);
+            get_table_rows(&elements, parser);
             println!("--#--#--")
         }
         Err(_) => println!("Не удалось прочитать файл"),
@@ -99,7 +109,7 @@ fn get_value(elements: &Vec<&tl::Node>, value_in_html: &str, shift: usize, parse
     }
 }
 
-fn get_table_row(elements: &Vec<&tl::Node>, parser: &tl::Parser) {
+fn get_table_rows(elements: &Vec<&tl::Node>, parser: &tl::Parser) {
     let start_position = elements
         .iter()
         .enumerate()
@@ -135,61 +145,67 @@ fn get_table_row(elements: &Vec<&tl::Node>, parser: &tl::Parser) {
                 })
                 .collect::<Vec<_>>();
 
-            let mut t_row = TableRow {
-                ..Default::default()
-            };
+            let vec_t_row = rows_start_position
+                .iter()
+                .map(|element| {
+                    let mut t_row = TableRow {
+                        ..Default::default()
+                    };
 
-            rows_start_position.iter().for_each(|element| {
-                let start = element.0;
-                t_row.number = ref_table[start].1.parse::<i32>().unwrap_or_default();
-                t_row.name = ref_table[start + 2].1.parse::<String>().unwrap_or_default();
-                t_row.dop_name = ref_table[start + 3].1.parse::<String>().unwrap_or_default();
-                t_row.code = ref_table[start + 4].1.parse::<u32>().unwrap_or_default();
+                    let start = element.0;
+                    t_row.number = ref_table[start].1.parse::<i32>().unwrap_or_default();
+                    t_row.name = ref_table[start + 2].1.parse::<String>().unwrap_or_default();
+                    t_row.dop_name = ref_table[start + 3].1.parse::<String>().unwrap_or_default();
+                    t_row.code = ref_table[start + 4].1.parse::<u32>().unwrap_or_default();
 
-                let tarif_rep = ref_table[start + 6].1.replace(",", ".");
-                t_row.tarif = tarif_rep
-                    .parse::<f64>()
-                    .unwrap_or_else(|_| tarif_rep.parse::<f32>().unwrap_or_default() as f64);
+                    let tarif_rep = ref_table[start + 6].1.replace(",", ".");
+                    t_row.tarif = tarif_rep
+                        .parse::<f64>()
+                        .unwrap_or_else(|_| tarif_rep.parse::<f32>().unwrap_or_default() as f64);
 
-                let price_rep = ref_table[start + 7].1.replace(",", ".");
-                t_row.price = price_rep
-                    .parse::<f64>()
-                    .unwrap_or_else(|_| tarif_rep.parse::<f32>().unwrap_or_default() as f64);
+                    let price_rep = ref_table[start + 7].1.replace(",", ".");
+                    t_row.price = price_rep
+                        .parse::<f64>()
+                        .unwrap_or_else(|_| tarif_rep.parse::<f32>().unwrap_or_default() as f64);
 
-                let size_price_rep = ref_table[start + 10].1.replace(",", ".");
-                t_row.size_price = size_price_rep
-                    .parse::<f64>()
-                    .unwrap_or_else(|_| tarif_rep.parse::<f32>().unwrap_or_default() as f64);
+                    let size_price_rep = ref_table[start + 10].1.replace(",", ".");
+                    t_row.size_price = size_price_rep
+                        .parse::<f64>()
+                        .unwrap_or_else(|_| tarif_rep.parse::<f32>().unwrap_or_default() as f64);
 
-                t_row.percent = ref_table[start + 11]
-                    .1
-                    .parse::<String>()
-                    .unwrap_or_default();
+                    t_row.percent = ref_table[start + 11]
+                        .1
+                        .parse::<String>()
+                        .unwrap_or_default();
 
-                let summ_rep = ref_table[start + 12].1.replace(",", ".");
-                t_row.summ = summ_rep
-                    .parse::<f64>()
-                    .unwrap_or_else(|_| tarif_rep.parse::<f32>().unwrap_or_default() as f64);
+                    let summ_rep = ref_table[start + 12].1.replace(",", ".");
+                    t_row.summ = summ_rep
+                        .parse::<f64>()
+                        .unwrap_or_else(|_| tarif_rep.parse::<f32>().unwrap_or_default() as f64);
 
-                let price_with_rep = ref_table[start + 13].1.replace(",", ".");
-                t_row.price_with = price_with_rep
-                    .parse::<f64>()
-                    .unwrap_or_else(|_| tarif_rep.parse::<f32>().unwrap_or_default() as f64);
+                    let price_with_rep = ref_table[start + 13].1.replace(",", ".");
+                    t_row.price_with = price_with_rep
+                        .parse::<f64>()
+                        .unwrap_or_else(|_| tarif_rep.parse::<f32>().unwrap_or_default() as f64);
 
-                t_row.declaration = ref_table[start + 14]
-                    .1
-                    .parse::<String>()
-                    .unwrap_or_default();
+                    t_row.declaration = ref_table[start + 14]
+                        .1
+                        .parse::<String>()
+                        .unwrap_or_default();
 
-                t_row.declaration_num = ref_table[start + 15].1.parse::<i32>().unwrap_or_default();
+                    t_row.declaration_num =
+                        ref_table[start + 15].1.parse::<i32>().unwrap_or_default();
 
-                t_row.additionally = ref_table[start + 17].1.parse::<u64>().unwrap_or_default();
-            });
+                    t_row.additionally = ref_table[start + 17].1.parse::<u64>().unwrap_or_default();
+
+                    t_row
+                })
+                .collect::<Vec<_>>();
 
             dbg!(rows_start_position);
             let value = elements[end].inner_text(parser);
             println!("{}", &value);
-            dbg!(t_row);
+            dbg!(vec_t_row);
         }
     }
 }
