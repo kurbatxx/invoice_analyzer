@@ -5,6 +5,22 @@ use std::{
     path::{Path, PathBuf},
     process::Command,
 };
+#[derive(Default, Debug)]
+struct TableRow {
+    number: i32,
+    name: String,
+    dop_name: String,
+    code: u32,
+    tarif: f64,
+    price: f64,
+    size_price: f64,
+    percent: String,
+    summ: f64,
+    price_with: f64,
+    declaration: String,
+    declaration_num: i32,
+    additionally: u64,
+}
 
 fn main() {
     let args: Vec<String> = env::args().collect();
@@ -56,6 +72,7 @@ fn get_data_in_html(path: &str) {
                 .filter(|node| node.as_tag().map_or(false, |tag| tag.name() == "div"))
                 .collect::<Vec<_>>();
 
+            println!("{}", &path);
             get_value(&elements, "Дата выписки", 1, parser);
             get_value(&elements, "Регистрационный номер", 1, parser);
             get_value(&elements, "Адрес доставки", 1, parser);
@@ -99,8 +116,80 @@ fn get_table_row(elements: &Vec<&tl::Node>, parser: &tl::Parser) {
             let start = start.0 + 7 + 21 + 19;
             let end = end.0;
 
+            let ref_table = elements[start..end]
+                .iter()
+                .map(|node| node.inner_text(parser))
+                .enumerate()
+                .collect::<Vec<_>>();
+
+            let rows_start_position = ref_table[0..ref_table.len() - 16]
+                .iter()
+                .filter(|element| {
+                    element.1.parse::<u32>().is_ok()
+                        && ref_table[element.0 + 1].1.parse::<u32>().is_ok()
+                        && ref_table[element.0 + 2].1.parse::<u32>().is_err()
+                        && ref_table[element.0 + 3].1.parse::<u32>().is_err()
+                        && ref_table[element.0 + 4].1.parse::<u32>().is_ok()
+                        && ref_table[element.0 + 5].1.parse::<u32>().is_err()
+                        && ref_table[element.0 + 16].1.parse::<u32>().is_ok()
+                })
+                .collect::<Vec<_>>();
+
+            let mut t_row = TableRow {
+                ..Default::default()
+            };
+
+            rows_start_position.iter().for_each(|element| {
+                let start = element.0;
+                t_row.number = ref_table[start].1.parse::<i32>().unwrap_or_default();
+                t_row.name = ref_table[start + 2].1.parse::<String>().unwrap_or_default();
+                t_row.dop_name = ref_table[start + 3].1.parse::<String>().unwrap_or_default();
+                t_row.code = ref_table[start + 4].1.parse::<u32>().unwrap_or_default();
+
+                let tarif_rep = ref_table[start + 6].1.replace(",", ".");
+                t_row.tarif = tarif_rep
+                    .parse::<f64>()
+                    .unwrap_or_else(|_| tarif_rep.parse::<f32>().unwrap_or_default() as f64);
+
+                let price_rep = ref_table[start + 7].1.replace(",", ".");
+                t_row.price = price_rep
+                    .parse::<f64>()
+                    .unwrap_or_else(|_| tarif_rep.parse::<f32>().unwrap_or_default() as f64);
+
+                let size_price_rep = ref_table[start + 10].1.replace(",", ".");
+                t_row.size_price = size_price_rep
+                    .parse::<f64>()
+                    .unwrap_or_else(|_| tarif_rep.parse::<f32>().unwrap_or_default() as f64);
+
+                t_row.percent = ref_table[start + 11]
+                    .1
+                    .parse::<String>()
+                    .unwrap_or_default();
+
+                let summ_rep = ref_table[start + 12].1.replace(",", ".");
+                t_row.summ = summ_rep
+                    .parse::<f64>()
+                    .unwrap_or_else(|_| tarif_rep.parse::<f32>().unwrap_or_default() as f64);
+
+                let price_with_rep = ref_table[start + 13].1.replace(",", ".");
+                t_row.price_with = price_with_rep
+                    .parse::<f64>()
+                    .unwrap_or_else(|_| tarif_rep.parse::<f32>().unwrap_or_default() as f64);
+
+                t_row.declaration = ref_table[start + 14]
+                    .1
+                    .parse::<String>()
+                    .unwrap_or_default();
+
+                t_row.declaration_num = ref_table[start + 15].1.parse::<i32>().unwrap_or_default();
+
+                t_row.additionally = ref_table[start + 17].1.parse::<u64>().unwrap_or_default();
+            });
+
+            dbg!(rows_start_position);
             let value = elements[end].inner_text(parser);
             println!("{}", &value);
+            dbg!(t_row);
         }
     }
 }
