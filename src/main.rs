@@ -8,14 +8,14 @@ use std::{
 
 #[derive(Default, Debug)]
 struct DataHtml {
-    path: String,
+    path_html: String,
     date: String,
     esf: String,
     address: String,
-    table: Vec<TableRow>,
+    tables: Vec<TableRow>,
 }
 
-#[derive(Default, Debug)]
+#[derive(Default, Debug, Clone)]
 struct TableRow {
     number: i32,
     name: String,
@@ -45,16 +45,58 @@ fn main() {
         convert_all_pdfs();
     }
 
+    let mut full_data: Vec<DataHtml> = vec![];
+
     let htmls = get_files("data/temp/", "html");
     match htmls {
         Ok(htmls) => htmls
             .into_iter()
             .for_each(|file| match file.path().to_str() {
-                Some(path) => get_data_in_html(path),
+                Some(path) => {
+                    let data = get_data_in_html(path);
+                    match data {
+                        Ok(data) => full_data.push(data),
+                        Err(_) => println!("Нет данных"),
+                    }
+                }
                 None => println!("Что-то не так"),
             }),
         Err(_) => println!("Не найдены html-файлы"),
     }
+    println!("#######\n#######");
+    analyze(full_data);
+}
+
+fn analyze(full_data: Vec<DataHtml>) {
+    let mut vec_sort_of_address: Vec<Vec<&DataHtml>> = vec![];
+
+    let mut v = full_data
+        .iter()
+        .map(|element| &element.address)
+        .collect::<Vec<_>>();
+    v.sort_unstable();
+    v.dedup();
+
+    v.iter().for_each(|address| {
+        let v = full_data
+            .iter()
+            .filter(|element| &&element.address == address)
+            .collect::<Vec<_>>();
+        vec_sort_of_address.push(v);
+    });
+
+    let mut products = vec![];
+    let _ = vec_sort_of_address[2]
+        .iter()
+        .map(|data| data.tables.clone())
+        .map(|table| table.clone())
+        .for_each(|table| {
+            table.iter().for_each(|row| {
+                products.push(row.name.to_owned());
+            });
+        });
+
+    dbg!(products);
 }
 
 fn convert_all_pdfs() {
@@ -70,7 +112,7 @@ fn convert_all_pdfs() {
     }
 }
 
-fn get_data_in_html(path: &str) {
+fn get_data_in_html(path: &str) -> Result<DataHtml, std::io::Error> {
     let html = fs::read_to_string(path);
     match html {
         Ok(html) => {
@@ -82,18 +124,33 @@ fn get_data_in_html(path: &str) {
                 .filter(|node| node.as_tag().map_or(false, |tag| tag.name() == "div"))
                 .collect::<Vec<_>>();
 
+            let data = DataHtml {
+                path_html: path.to_owned(),
+                date: get_value(&elements, "Дата выписки", 1, parser)
+                    .unwrap_or("Нет даты".to_string()),
+                esf: get_value(&elements, "Регистрационный номер", 1, parser)
+                    .unwrap_or("-".to_string()),
+                address: get_value(&elements, "Адрес доставки", 1, parser)
+                    .unwrap_or("Нет адреса".to_string()),
+                tables: get_table_rows(&elements, parser),
+            };
             println!("{}", &path);
-            get_value(&elements, "Дата выписки", 1, parser);
-            get_value(&elements, "Регистрационный номер", 1, parser);
-            get_value(&elements, "Адрес доставки", 1, parser);
-            get_table_rows(&elements, parser);
-            println!("--#--#--")
+            println!("--#--#--");
+            Ok(data)
         }
-        Err(_) => println!("Не удалось прочитать файл"),
+        Err(e) => {
+            println!("Не удалось прочитать файл");
+            Err(e)
+        }
     }
 }
 
-fn get_value(elements: &Vec<&tl::Node>, value_in_html: &str, shift: usize, parser: &tl::Parser) {
+fn get_value(
+    elements: &Vec<&tl::Node>,
+    value_in_html: &str,
+    shift: usize,
+    parser: &tl::Parser,
+) -> Option<String> {
     let element = elements
         .iter()
         .enumerate()
@@ -103,13 +160,16 @@ fn get_value(elements: &Vec<&tl::Node>, value_in_html: &str, shift: usize, parse
             let (position, _node) = element;
             let value = elements[position + shift].inner_text(parser);
             println!("{}", &value);
-            //sort_pdfs_on_folder(&value, path);
+            Some(value.to_string())
         }
-        None => println!("Ничего не найдено"),
+        None => {
+            println!("-Ничего не найдено-");
+            None
+        }
     }
 }
 
-fn get_table_rows(elements: &Vec<&tl::Node>, parser: &tl::Parser) {
+fn get_table_rows(elements: &Vec<&tl::Node>, parser: &tl::Parser) -> Vec<TableRow> {
     let start_position = elements
         .iter()
         .enumerate()
@@ -121,7 +181,11 @@ fn get_table_rows(elements: &Vec<&tl::Node>, parser: &tl::Parser) {
         .find(|node| node.1.inner_text(parser) == "Всего по счету");
 
     match (start_position, end_position) {
-        (None, None) | (None, Some(_)) | (Some(_), None) => println!("--Ничего--"),
+        (None, None) | (None, Some(_)) | (Some(_), None) => {
+            println!("--Ничего--");
+            let my_values: Vec<TableRow> = vec![];
+            my_values
+        }
         (Some(start), Some(end)) => {
             let start = start.0 + 7 + 21 + 19;
             let end = end.0;
@@ -145,7 +209,7 @@ fn get_table_rows(elements: &Vec<&tl::Node>, parser: &tl::Parser) {
                 })
                 .collect::<Vec<_>>();
 
-            let vec_t_row = rows_start_position
+            let vec_t_row: Vec<TableRow> = rows_start_position
                 .iter()
                 .map(|element| {
                     let mut t_row = TableRow {
@@ -202,10 +266,7 @@ fn get_table_rows(elements: &Vec<&tl::Node>, parser: &tl::Parser) {
                 })
                 .collect::<Vec<_>>();
 
-            dbg!(rows_start_position);
-            let value = elements[end].inner_text(parser);
-            println!("{}", &value);
-            dbg!(vec_t_row);
+            vec_t_row
         }
     }
 }
