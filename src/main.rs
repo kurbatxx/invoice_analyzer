@@ -85,18 +85,50 @@ fn analyze(full_data: Vec<DataHtml>) {
         vec_sort_of_address.push(v);
     });
 
+    for i in &vec_sort_of_address {
+        let mut products = vec![];
+        let _ = i.iter().map(|data| data.tables.clone()).for_each(|table| {
+            table.iter().for_each(|row| {
+                products.push(row.additionally.to_owned());
+            });
+        });
+
+        products.sort_unstable();
+        products.dedup();
+        dbg!(products.len());
+    }
+
     let mut products = vec![];
     let _ = vec_sort_of_address[2]
         .iter()
         .map(|data| data.tables.clone())
-        .map(|table| table.clone())
         .for_each(|table| {
             table.iter().for_each(|row| {
                 products.push(row.name.to_owned());
             });
         });
 
-    dbg!(products);
+    products.sort_unstable();
+    products.dedup();
+    //dbg!(products);
+
+    products.iter().for_each(|product_name| {
+        let _ = vec_sort_of_address[2]
+            .iter()
+            .map(|data| (data.clone(), data.tables.clone()))
+            .for_each(|table| {
+                let data = table.0;
+                table.1.iter().for_each(|row| {
+                    if &row.name == product_name {
+                        dbg!(&data.path_html);
+                        // dbg!(&data.address);
+                        dbg!(row);
+                    }
+                    //products.push(row.name.to_owned());
+                });
+            });
+        println!("-##--##--##--");
+    });
 }
 
 fn convert_all_pdfs() {
