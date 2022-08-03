@@ -68,34 +68,42 @@ fn main() {
 }
 
 fn analyze(full_data: Vec<DataHtml>) {
+    full_data.iter().for_each(|data| {
+        sort_pdfs_on_folder(&data.address, &data.path_html);
+    });
+
     let mut vec_sort_of_address: Vec<Vec<&DataHtml>> = vec![];
 
-    let mut v = full_data
+    let mut vec_address = full_data
         .iter()
         .map(|element| &element.address)
         .collect::<Vec<_>>();
-    v.sort_unstable();
-    v.dedup();
+    vec_address.sort_unstable();
+    vec_address.dedup();
 
-    v.iter().for_each(|address| {
-        let v = full_data
+    vec_address.iter().for_each(|address| {
+        let data = full_data
             .iter()
             .filter(|element| &&element.address == address)
             .collect::<Vec<_>>();
-        vec_sort_of_address.push(v);
+        vec_sort_of_address.push(data);
     });
 
+    let mut k = 0;
     for i in &vec_sort_of_address {
+        dbg!(&vec_sort_of_address[k][0].address);
         let mut products = vec![];
         let _ = i.iter().map(|data| data.tables.clone()).for_each(|table| {
             table.iter().for_each(|row| {
-                products.push(row.additionally.to_owned());
+                products.push(row.name.to_owned());
             });
         });
 
         products.sort_unstable();
         products.dedup();
-        dbg!(products.len());
+        dbg!(&products.len());
+        dbg!(products);
+        k = k + 1;
     }
 
     let mut products = vec![];
@@ -120,9 +128,9 @@ fn analyze(full_data: Vec<DataHtml>) {
                 let data = table.0;
                 table.1.iter().for_each(|row| {
                     if &row.name == product_name {
-                        dbg!(&data.path_html);
+                        // dbg!(&data.path_html);
                         // dbg!(&data.address);
-                        dbg!(row);
+                        // dbg!(row);
                     }
                     //products.push(row.name.to_owned());
                 });
