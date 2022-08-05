@@ -63,7 +63,7 @@ fn main() {
             }),
         Err(_) => println!("Не найдены html-файлы"),
     }
-    println!("#######\n#######");
+    //println!("#######\n#######");
     analyze(full_data);
 }
 
@@ -95,7 +95,7 @@ fn analyze(full_data: Vec<DataHtml>) {
         let mut products = vec![];
         let _ = i.iter().map(|data| data.tables.clone()).for_each(|table| {
             table.iter().for_each(|row| {
-                products.push(row.name.to_owned());
+                products.push(row.additionally.to_owned());
             });
         });
 
@@ -128,6 +128,10 @@ fn analyze(full_data: Vec<DataHtml>) {
                 let data = table.0;
                 table.1.iter().for_each(|row| {
                     if &row.name == product_name {
+                        if row.additionally == 0 {
+                            dbg!(&data.path_html);
+                            dbg!(row);
+                        };
                         // dbg!(&data.path_html);
                         // dbg!(&data.address);
                         // dbg!(row);
@@ -174,8 +178,8 @@ fn get_data_in_html(path: &str) -> Result<DataHtml, std::io::Error> {
                     .unwrap_or("Нет адреса".to_string()),
                 tables: get_table_rows(&elements, parser),
             };
-            println!("{}", &path);
-            println!("--#--#--");
+            // println!("{}", &path);
+            // println!("--#--#--");
             Ok(data)
         }
         Err(e) => {
@@ -236,16 +240,17 @@ fn get_table_rows(elements: &Vec<&tl::Node>, parser: &tl::Parser) -> Vec<TableRo
                 .enumerate()
                 .collect::<Vec<_>>();
 
-            let rows_start_position = ref_table[0..ref_table.len() - 16]
+            let rows_start_position = ref_table[0..ref_table.len() - 17]
                 .iter()
                 .filter(|element| {
                     element.1.parse::<u32>().is_ok()
                         && ref_table[element.0 + 1].1.parse::<u32>().is_ok()
                         && ref_table[element.0 + 2].1.parse::<u32>().is_err()
                         && ref_table[element.0 + 3].1.parse::<u32>().is_err()
-                        && ref_table[element.0 + 4].1.parse::<u32>().is_ok()
                         && ref_table[element.0 + 5].1.parse::<u32>().is_err()
                         && ref_table[element.0 + 16].1.parse::<u32>().is_ok()
+                        && ref_table[element.0 + 17].1.parse::<u64>().is_ok()
+                        && ref_table[element.0 + 17].1.len() > 6
                 })
                 .collect::<Vec<_>>();
 
