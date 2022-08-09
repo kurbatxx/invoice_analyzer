@@ -116,41 +116,18 @@ fn analyze(full_data: Vec<DataHtml>) {
             vec_additionally.iter().for_each(|additionally| {
                 data.iter()
                     .map(|data| (data.clone(), data.tables.clone()))
-                    .for_each(|table| {
-                        let data = table.0;
-                        table.1.iter().for_each(|row| {
+                    .for_each(|(data, table)| {
+                        table.iter().for_each(|row| {
                             if &row.additionally == additionally {
                                 dbg!(&data.path_html);
                                 dbg!(&data.address);
                                 dbg!(row);
                             }
-                            //products.push(row.name.to_owned());
                         });
                     });
                 println!("-##--##--##--");
             })
         });
-    // products.iter().for_each(|product_name| {
-    //     let _ = vec_sort_of_address[2]
-    //         .iter()
-    //         .map(|data| (data.clone(), data.tables.clone()))
-    //         .for_each(|table| {
-    //            let data = table.0;
-    //             table.1.iter().for_each(|row| {
-    //                 if &row.name == product_name {
-    //                     if row.additionally == 0 {
-    //                         dbg!(&data.path_html);
-    //                         dbg!(row);
-    //                     };
-    //                     // dbg!(&data.path_html);
-    //                     // dbg!(&data.address);
-    //                     // dbg!(row);
-    //                 }
-    //                 //products.push(row.name.to_owned());
-    //             });
-    //         });
-    //     println!("-##--##--##--");
-    // });
 }
 
 fn convert_all_pdfs() {
