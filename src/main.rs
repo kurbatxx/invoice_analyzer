@@ -63,7 +63,6 @@ fn main() {
             }),
         Err(_) => println!("Не найдены html-файлы"),
     }
-    //println!("#######\n#######");
     analyze(full_data);
 }
 
@@ -72,8 +71,6 @@ fn analyze(full_data: Vec<DataHtml>) {
         sort_pdfs_on_folder(&data.address, &data.path_html);
     });
 
-    let mut vec_sort_of_address: Vec<Vec<&DataHtml>> = vec![];
-
     let mut vec_address = full_data
         .iter()
         .map(|element| &element.address)
@@ -81,6 +78,7 @@ fn analyze(full_data: Vec<DataHtml>) {
     vec_address.sort_unstable();
     vec_address.dedup();
 
+    let mut vec_sort_of_address: Vec<Vec<&DataHtml>> = vec![];
     vec_address.iter().for_each(|address| {
         let data = full_data
             .iter()
@@ -89,58 +87,70 @@ fn analyze(full_data: Vec<DataHtml>) {
         vec_sort_of_address.push(data);
     });
 
-    let mut k = 0;
-    for i in &vec_sort_of_address {
-        dbg!(&vec_sort_of_address[k][0].address);
-        let mut products = vec![];
-        let _ = i.iter().map(|data| data.tables.clone()).for_each(|table| {
-            table.iter().for_each(|row| {
-                products.push(row.additionally.to_owned());
-            });
-        });
-
-        products.sort_unstable();
-        products.dedup();
-        dbg!(&products.len());
-        dbg!(products);
-        k = k + 1;
-    }
-
-    let mut products = vec![];
-    let _ = vec_sort_of_address[2]
-        .iter()
-        .map(|data| data.tables.clone())
-        .for_each(|table| {
-            table.iter().for_each(|row| {
-                products.push(row.name.to_owned());
-            });
-        });
-
-    products.sort_unstable();
-    products.dedup();
-    //dbg!(products);
-
-    products.iter().for_each(|product_name| {
-        let _ = vec_sort_of_address[2]
+    let mut vec_additionaly_sort_of_address = vec![];
+    vec_sort_of_address.iter().for_each(|vec_sort_of_address| {
+        let mut additionally = vec![];
+        let _ = vec_sort_of_address
             .iter()
-            .map(|data| (data.clone(), data.tables.clone()))
+            .map(|data| data.tables.clone())
             .for_each(|table| {
-                let data = table.0;
-                table.1.iter().for_each(|row| {
-                    if &row.name == product_name {
-                        if row.additionally == 0 {
-                            dbg!(&data.path_html);
-                            dbg!(row);
-                        };
-                        // dbg!(&data.path_html);
-                        // dbg!(&data.address);
-                        // dbg!(row);
-                    }
-                    //products.push(row.name.to_owned());
+                table.iter().for_each(|row| {
+                    additionally.push(row.additionally.to_owned());
                 });
             });
-        println!("-##--##--##--");
+        additionally.sort_unstable();
+        additionally.dedup();
+        vec_additionaly_sort_of_address.push(additionally);
     });
+
+    dbg!(&vec_additionaly_sort_of_address);
+
+    let vec_additionally_with_data = vec_additionaly_sort_of_address
+        .iter()
+        .zip(vec_sort_of_address.iter())
+        .collect::<Vec<_>>();
+
+    vec_additionally_with_data
+        .iter()
+        .for_each(|(vec_additionally, data)| {
+            vec_additionally.iter().for_each(|additionally| {
+                data.iter()
+                    .map(|data| (data.clone(), data.tables.clone()))
+                    .for_each(|table| {
+                        let data = table.0;
+                        table.1.iter().for_each(|row| {
+                            if &row.additionally == additionally {
+                                dbg!(&data.path_html);
+                                dbg!(&data.address);
+                                dbg!(row);
+                            }
+                            //products.push(row.name.to_owned());
+                        });
+                    });
+                println!("-##--##--##--");
+            })
+        });
+    // products.iter().for_each(|product_name| {
+    //     let _ = vec_sort_of_address[2]
+    //         .iter()
+    //         .map(|data| (data.clone(), data.tables.clone()))
+    //         .for_each(|table| {
+    //            let data = table.0;
+    //             table.1.iter().for_each(|row| {
+    //                 if &row.name == product_name {
+    //                     if row.additionally == 0 {
+    //                         dbg!(&data.path_html);
+    //                         dbg!(row);
+    //                     };
+    //                     // dbg!(&data.path_html);
+    //                     // dbg!(&data.address);
+    //                     // dbg!(row);
+    //                 }
+    //                 //products.push(row.name.to_owned());
+    //             });
+    //         });
+    //     println!("-##--##--##--");
+    // });
 }
 
 fn convert_all_pdfs() {
@@ -178,8 +188,6 @@ fn get_data_in_html(path: &str) -> Result<DataHtml, std::io::Error> {
                     .unwrap_or("Нет адреса".to_string()),
                 tables: get_table_rows(&elements, parser),
             };
-            // println!("{}", &path);
-            // println!("--#--#--");
             Ok(data)
         }
         Err(e) => {
@@ -203,7 +211,6 @@ fn get_value(
         Some(element) => {
             let (position, _node) = element;
             let value = elements[position + shift].inner_text(parser);
-            println!("{}", &value);
             Some(value.to_string())
         }
         None => {
