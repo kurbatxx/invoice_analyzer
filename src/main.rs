@@ -69,8 +69,6 @@ fn main() {
 }
 
 fn analyze(full_data: Vec<DataHtml>) {
-    let mut book = umya_spreadsheet::new_file();
-
     full_data.iter().for_each(|data| {
         sort_pdfs_on_folder(&data.address, &data.path_html);
     });
@@ -114,7 +112,25 @@ fn analyze(full_data: Vec<DataHtml>) {
         .zip(vec_sort_of_address.iter())
         .collect::<Vec<_>>();
 
-    let mut table_row_number = 1;
+    let mut book = umya_spreadsheet::new_file();
+    let titles = vec![
+        "Путь",
+        "Магазин",
+        "Дата",
+        "ESF",
+        "Штрих-код",
+        "Название",
+        "Сумма с налогом",
+    ];
+
+    titles.iter().enumerate().for_each(|(index, value)| {
+        book.get_sheet_mut(&0)
+            .unwrap()
+            .get_cell_by_column_and_row_mut(&((index + 1) as u32), &1)
+            .set_value(*value);
+    });
+
+    let mut table_row_number = 2;
     vec_additionally_with_data
         .iter()
         .for_each(|(vec_additionally, data)| {
@@ -124,50 +140,37 @@ fn analyze(full_data: Vec<DataHtml>) {
                     .for_each(|(data, table)| {
                         table.iter().for_each(|row| {
                             if &row.additionally == additionally {
-                                book.get_sheet_mut(&0)
-                                    .unwrap()
-                                    .get_cell_by_column_and_row_mut(&1, &table_row_number)
-                                    .set_value(&data.path_html);
+                                let additionally = &row.additionally.to_string();
+                                let price_with = &row.price_with.to_string();
 
-                                book.get_sheet_mut(&0)
-                                    .unwrap()
-                                    .get_cell_by_column_and_row_mut(&2, &table_row_number)
-                                    .set_value(&data.address);
+                                let vec_xlsx_row = vec![
+                                    &data.path_html,
+                                    &data.address,
+                                    &data.date,
+                                    &data.esf,
+                                    additionally,
+                                    &row.name,
+                                    price_with,
+                                ];
 
-                                book.get_sheet_mut(&0)
-                                    .unwrap()
-                                    .get_cell_by_column_and_row_mut(&3, &table_row_number)
-                                    .set_value(&data.date);
-
-                                book.get_sheet_mut(&0)
-                                    .unwrap()
-                                    .get_cell_by_column_and_row_mut(&4, &table_row_number)
-                                    .set_value(&data.esf);
-
-                                book.get_sheet_mut(&0)
-                                    .unwrap()
-                                    .get_cell_by_column_and_row_mut(&5, &table_row_number)
-                                    .set_value_from_u64_ref(&row.additionally);
-
-                                book.get_sheet_mut(&0)
-                                    .unwrap()
-                                    .get_cell_by_column_and_row_mut(&6, &table_row_number)
-                                    .set_value(&row.name);
-
-                                book.get_sheet_mut(&0)
-                                    .unwrap()
-                                    .get_cell_by_column_and_row_mut(&7, &table_row_number)
-                                    .set_value(&row.price_with.to_string());
+                                vec_xlsx_row.iter().enumerate().for_each(|(index, value)| {
+                                    book.get_sheet_mut(&0)
+                                        .unwrap()
+                                        .get_cell_by_column_and_row_mut(
+                                            &((index + 1) as u32),
+                                            &table_row_number,
+                                        )
+                                        .set_value(*value);
+                                });
 
                                 table_row_number += 1;
                             }
                         });
                     });
-                println!("-##--##--##--");
             })
         });
 
-    let _ = umya_spreadsheet::writer::xlsx::write(&book, "./data/t.xlsx");
+    let _ = umya_spreadsheet::writer::xlsx::write(&book, "./data/data.xlsx");
 }
 
 fn convert_all_pdfs() {

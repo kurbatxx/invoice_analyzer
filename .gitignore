@@ -1,6 +1,7 @@
 /target
 /.vscode
 /.cargo
+/data/*.xlsx
 
 *.pdf
 *.html
